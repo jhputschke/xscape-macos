@@ -41,22 +41,30 @@ if [ -n "$(git -C "$HERE" status --porcelain)" ] && [ -z "${ALLOW_DIRTY:-}" ]; t
   exit 1
 fi
 
-say "fresh sources at the pins ($SRC)"
-mkdir -p "$SRC"
-at "$X" "$XSCAPE_REPO" "$XSCAPE_REF"
-(
-  cd "$EP"
-  bash get_iSS.sh > "$SRC/get_iSS.log" 2>&1
-  bash get_3dglauber.sh > "$SRC/get_3dglauber.log" 2>&1
-  bash get_music4gpu.sh > "$SRC/get_music4gpu.log" 2>&1
-  bash get_js_contrib.sh > "$SRC/get_js_contrib.log" 2>&1
-)
-move_to "$EP/js-contrib" "$JS_CONTRIB_REF"
-move_to "$EP/music4gpu" "$MUSIC4GPU_REF"
-for pair in "iSS $ISS_REF" "3dMCGlauber $GLAUBER_REF"; do
+if [ -n "${REUSE_SRC:-}" ] && [ -d "$X" ]; then
+  say "sources from an earlier run ($SRC; REUSE_SRC), checked against the pins"
+else
+  say "fresh sources at the pins ($SRC)"
+  mkdir -p "$SRC"
+  at "$X" "$XSCAPE_REPO" "$XSCAPE_REF"
+  (
+    cd "$EP"
+    bash get_iSS.sh > "$SRC/get_iSS.log" 2>&1
+    bash get_3dglauber.sh > "$SRC/get_3dglauber.log" 2>&1
+    bash get_music4gpu.sh > "$SRC/get_music4gpu.log" 2>&1
+    bash get_js_contrib.sh > "$SRC/get_js_contrib.log" 2>&1
+  )
+  move_to "$EP/js-contrib" "$JS_CONTRIB_REF"
+  move_to "$EP/music4gpu" "$MUSIC4GPU_REF"
+fi
+for pair in ". $XSCAPE_REF" "external_packages/js-contrib $JS_CONTRIB_REF" \
+            "external_packages/music4gpu $MUSIC4GPU_REF" "external_packages/iSS $ISS_REF" \
+            "external_packages/3dMCGlauber $GLAUBER_REF"; do
   set -- $pair
-  have=$(git -C "$EP/$1" rev-parse HEAD)
+  have=$(git -C "$X/$1" rev-parse HEAD)
   [ "$have" = "$2" ] || { echo "$1 is at $have, pins.env says $2" >&2; exit 1; }
+  [ -z "$(git -C "$X/$1" status --porcelain --untracked-files=no)" ] \
+    || { echo "$1 has local changes" >&2; exit 1; }
 done
 LBT=$SRC/LBT-tables
 [ -d "$LBT" ] || "$PYTHON_BIN" "$HERE/src/xscape/lbt.py" "$LBT" "$LBT_TABLES_COMMIT"
@@ -65,7 +73,8 @@ for d in . external_packages/js-contrib external_packages/music4gpu external_pac
   echo "$d $(git -C "$X/$d" rev-parse HEAD)"
 done
 
-say "build"
+say "build (a clean build tree)"
+rm -rf "$HERE/build/cmake"
 XSCAPE_SRC=$X LBT_TABLES_DIR=$LBT "$HERE/build_wheel.sh"
 
 [ "$UPLOAD" = 1 ] || exit 0

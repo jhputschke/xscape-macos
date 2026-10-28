@@ -45,6 +45,10 @@ grep -q "^version = \"$PYJETSCAPE_VERSION\"" "$PYJS/pyproject.toml" \
 
 say "1. configure and build ($BUILD)"
 mkdir -p "$HERE/build"
+# a build tree configured for another source tree can't be reused
+if [ -f "$BUILD/CMakeCache.txt" ] && ! grep -qx "CMAKE_HOME_DIRECTORY:INTERNAL=$XSCAPE_SRC" "$BUILD/CMakeCache.txt"; then
+  rm -rf "$BUILD"
+fi
 cmake -S "$XSCAPE_SRC" -B "$BUILD" -Wno-dev \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
   -DUSE_METAL=ON -DUSE_ROOT=OFF -DUSE_MUSIC=ON -DUSE_ISS=ON -DUSE_3DGlauber=ON \
