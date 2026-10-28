@@ -55,7 +55,10 @@ cmake -S "$XSCAPE_SRC" -B "$BUILD" -Wno-dev \
   -DUSE_JS_CONTRIB=ON -DUSE_JS_PYJETSCAPE=ON -DUSE_JS_FNO_HYDRO=OFF -DUSE_SMASH=OFF \
   -DPython3_EXECUTABLE="$(command -v "$PYTHON_BIN")" \
   -DPYJETSCAPE_CORE_OUTPUT_DIR="$BUILD/pyjetscape" -DPYJETSCAPE_INSTALL_DIR=. \
-  -DCMAKE_INSTALL_PREFIX="$STAGE/xscape" > "$HERE/build/configure.log"
+  -DCMAKE_INSTALL_PREFIX=/xscape-not-installed > "$HERE/build/configure.log"
+# (the prefix is baked into libJetScape as its fallback data folder: a path that exists on
+#  no Mac, not the staging folder, so an installed copy never reads the build machine's files;
+#  the install goes to the stage with --prefix)
 cmake --build "$BUILD" -j "$JOBS" > "$HERE/build/build.log"
 
 say "2. install component xscape_runtime"

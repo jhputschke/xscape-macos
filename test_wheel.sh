@@ -28,7 +28,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export UV_PYTHON_PREFERENCE=only-managed
 
 rm -rf "$OUT"; mkdir -p "$OUT"
-"$UV" venv -q "$OUT/venv" --python "$PYTHON_VERSION"
+"$UV" venv -q --managed-python "$OUT/venv" --python "$PYTHON_VERSION"
 if [ -n "$LOCK_URL" ]; then
   LOCK=$OUT/$(basename "$LOCK_URL"); curl -fsSL -o "$LOCK" "$LOCK_URL"
   "$UV" pip sync -q --python "$OUT/venv/bin/python" "$LOCK"
