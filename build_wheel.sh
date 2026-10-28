@@ -132,7 +132,8 @@ say "5. pyjetscape wheel"
 rm -rf "$HERE/build/pyjetscape_src"; mkdir -p "$HERE/build/pyjetscape_src"
 (cd "$PYJS" && git ls-files -z . | tar --null -T - -cf -) | tar -C "$HERE/build/pyjetscape_src" -xf -
 "$UV" build --wheel --out-dir "$DIST" "$HERE/build/pyjetscape_src" > "$HERE/build/pyjetscape_build.log" 2>&1
-if unzip -l "$DIST"/pyjetscape-*.whl | grep -q 'pyjetscape_core'; then
+# (the type stub pyjetscape_core.pyi belongs in it; a compiled module must not)
+if unzip -Z1 "$DIST"/pyjetscape-*.whl | grep -E '\.(so|dylib)$' > /dev/null; then
   echo "the pyjetscape wheel contains a compiled core" >&2; exit 1
 fi
 
