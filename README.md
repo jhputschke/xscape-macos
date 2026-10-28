@@ -1,5 +1,7 @@
 # X-SCAPE on a Mac
 
+> The same guide is in js-contrib, next to the container guide: [`utils/README_Mac_Usage.md`](https://github.com/jhputschke/js-contrib/blob/main/utils/README_Mac_Usage.md). Change both together.
+
 X-SCAPE with MUSIC on the Mac's own GPU (Metal), installed with one command, no compiler
 and no containers. Docker and other containers on a Mac can't reach the GPU, so on a Mac
 this replaces the [production image](https://github.com/jhputschke/js-contrib/blob/main/utils/README_Container_Usage.md);
