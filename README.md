@@ -29,7 +29,7 @@ Contents: [Get started](#get-started) · [The rules](#the-rules) ·
 ## Get started
 
 **Prerequisites.** A Mac with Apple Silicon (M1 or later) on **macOS 26** or later
-( → About This Mac), about 4 GB of disk, internet for the installation. Not needed: Xcode,
+( → About This Mac), about 3 GB of disk (1 GB of it uv's download cache, `uv cache clean`), internet for the installation. Not needed: Xcode,
 Homebrew, conda, Docker, git, an Apple developer account.
 
 **Releases** are on [this repository's Releases page](https://github.com/jhputschke/xscape-macos/releases).
@@ -48,7 +48,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Then open a new Terminal window (or `source ~/.local/bin/env`), so that `uv` is found.
 With Homebrew, `brew install uv` works too.
 
-**Step 2: the environment** (uv downloads Python 3.13 for it; about 2 minutes):
+**Step 2: the environment** (uv downloads Python 3.13 and about 200 MB of packages; seconds to a few minutes, depending on the connection):
 
 ```bash
 VER=0.1.0.dev2
@@ -79,9 +79,12 @@ python -c "import jetscape as js; print(js.HAS_CORE, js.pyjetscape_core.MUSIC_BA
 # -> True music4gpu-metal
 ```
 
+The first `import` after the installation takes a little longer (matplotlib builds its font
+cache once).
+
 **Step 5: your first event** (one O+O event through the whole chain: 3dMCGlauber → Pythia
-with initial-state radiation → MUSIC on the GPU → Matter + LBT → iColored + iSS; about a
-minute, two hadron files in `~/xscape/out_oo/`):
+with initial-state radiation → MUSIC on the GPU → Matter + LBT → iColored + iSS; under a
+minute (27 s on an M3 Max), two hadron files in `~/xscape/out_oo/`):
 
 ```bash
 xscape-examples ~/xscape/examples
@@ -131,7 +134,7 @@ server or in the container. Their full documentation:
 ```bash
 cd ~/xscape/examples/prod_AuAu_0_10_jet
 
-# Au+Au 0-10 % with a jet: 2 events (about 35 s on an M3 Max)
+# Au+Au 0-10 % with a jet: 2 events (about 40 s on an M3 Max)
 python run_prod_jet.py --events 2 --seed 1 --write-particlize both --outdir ~/xscape/prod/out
 
 # a campaign: 20 jobs x 25 events, unique seeds, 3 jobs at a time on the GPU
@@ -330,7 +333,7 @@ uv itself: `rm ~/.local/bin/uv ~/.local/bin/uvx`.
 |---|---|
 | `xscape-fetch-data lbt [--from DIR]` | the LBT tables into `~/Library/Caches/xscape` (`$XSCAPE_CACHE`), checked, linked into this environment; `--from` uses tables already on disk |
 | `xscape-examples [DEST]` | copies the examples to `DEST` (default `./examples`); never overwrites |
-| `xscape-run -w RUN_DIR -u USER_XML` | X-SCAPE's `runJetscape` on a user XML in its own directory (`run_in_workdir.sh`) |
+| `xscape-run -w RUN_DIR -u USER_XML` | X-SCAPE's `runJetscape` on a user XML in its own directory (`run_in_workdir.sh`); e.g. 2 pp events: `xscape-run -w ~/xscape/runs/pp -u "$(python -c 'import xscape; print(xscape.TREE)')/config/jetscape_user.xml"` |
 | `runJetscape USER_XML` | X-SCAPE's executable with this environment's data, in the current directory |
 
 **Python:** `import jetscape as js` (PyJetscape; `js.JobDir`, `js.per_event`, the readers);
