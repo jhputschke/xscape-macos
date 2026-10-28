@@ -48,6 +48,6 @@ ls "$OUT/out" "$OUT/had"
 
 if [ -n "$REF" ]; then
   echo "== compare with $REF"
-  for f in $(ls "$REF/out" | grep '\.h5$'); do python "$HERE/cmp_h5.py" "$REF/out/$f" "$OUT/out/$f" | tail -3; done
-  for f in $(ls "$REF/had" | grep '\.h5$'); do python "$HERE/cmp_h5.py" "$REF/had/$f" "$OUT/had/$f" | tail -1; done
+  for f in $(ls "$REF/out" | grep '\.h5$'); do python "$HERE/cmp_h5.py" "$REF/out/$f" "$OUT/out/$f" | tail -3 || true; done
+  for f in $(ls "$REF/had" | grep '\.h5$'); do python "$HERE/cmp_h5.py" "$REF/had/$f" "$OUT/had/$f" | tail -1 || true; done
 fi
