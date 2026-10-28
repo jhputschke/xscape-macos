@@ -6,6 +6,8 @@
 # REF_DIR/out, REF_DIR/had), compare every dataset bit for bit.
 #
 #   TOOLS_BIN=<venv>/bin LBT_FROM=<checkout>/external_packages/LBT-tables ./test_wheel.sh /tmp/t ref
+#   TOOLS_BIN=<venv>/bin LOCK_URL=https://github.com/<repo>/releases/download/<tag>/<lock> ./test_wheel.sh /tmp/t ref
+# Without LBT_FROM, xscape-fetch-data downloads the tables (XSCAPE_CACHE: where to).
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -14,7 +16,9 @@ OUT=${1:?OUT_DIR}; REF=${2:-}
 TOOLS_BIN=${TOOLS_BIN:-}
 UV=${TOOLS_BIN:+$TOOLS_BIN/}uv
 DIST=$HERE/dist
-LOCK=$(ls "$DIST"/xscape-*.lock.txt)
+# LOCK_URL: install from a release (its lock names the wheels by URL), else from dist/
+LOCK_URL=${LOCK_URL:-}
+[ -n "$LOCK_URL" ] || LOCK=$(ls "$DIST"/xscape-*.lock.txt)
 U=11111111-2222-3333-4444-555555555555
 
 # no X-SCAPE settings, no conda, no checkout on the path
@@ -25,8 +29,13 @@ export UV_PYTHON_PREFERENCE=only-managed
 
 rm -rf "$OUT"; mkdir -p "$OUT"
 "$UV" venv -q "$OUT/venv" --python "$PYTHON_VERSION"
-# the lock names the local wheels by file name: let uv find them in dist/
-"$UV" pip sync -q --python "$OUT/venv/bin/python" --find-links "$DIST" "$LOCK"
+if [ -n "$LOCK_URL" ]; then
+  LOCK=$OUT/$(basename "$LOCK_URL"); curl -fsSL -o "$LOCK" "$LOCK_URL"
+  "$UV" pip sync -q --python "$OUT/venv/bin/python" "$LOCK"
+else
+  # the local lock names the wheels by file name: let uv find them in dist/
+  "$UV" pip sync -q --python "$OUT/venv/bin/python" --find-links "$DIST" "$LOCK"
+fi
 . "$OUT/venv/bin/activate"
 python -V; python -c 'import sys; print(sys.executable)'
 

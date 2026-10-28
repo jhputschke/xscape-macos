@@ -4,7 +4,7 @@
 #   XSCAPE_SRC=~/JetScape/X-SCAPE ./build_wheel.sh
 #
 # XSCAPE_SRC: an X-SCAPE checkout with its external_packages fetched (get_*.sh), js-contrib
-# included.  The checkout is built in build/cmake (its own build_* trees are not touched;
+# included.  LBT_TABLES_DIR: the LBT tables the checksums come from (default: the checkout's).  The checkout is built in build/cmake (its own build_* trees are not touched;
 # PyJetscape's core goes to build/cmake/pyjetscape, not into the checkout).  Steps:
 #   1. CMake: USE_METAL, USE_ROOT=OFF, macOS $MACOSX_DEPLOYMENT_TARGET, PyJetscape
 #   2. cmake --install --component xscape_runtime into build/stage/xscape
@@ -87,7 +87,7 @@ mkdir -p "$TREE/examples"
   echo "MUSIC music4gpu (Metal), USE_ROOT=OFF"
 } > "$TREE/BUILD_INFO.txt"
 cat "$TREE/BUILD_INFO.txt"
-(cd "$XSCAPE_SRC/external_packages/LBT-tables" && find . -type f ! -name '.*' | sed 's|^\./||' | sort \
+(cd "${LBT_TABLES_DIR:-$XSCAPE_SRC/external_packages/LBT-tables}" && find . -type f ! -name '.*' | sed 's|^\./||' | sort \
   | while read -r f; do printf '%s  %s\n' "$(shasum -a 256 "$f" | cut -d' ' -f1)" "$f"; done) \
   > "$PKG/lbt_tables.sha256"
 

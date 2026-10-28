@@ -12,17 +12,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
-import re
-import shutil
-import subprocess
 import sys
-import tarfile
-import tempfile
 from pathlib import Path
 
-from . import LBT_TABLES_COMMIT, PACKAGE, TREE, environment
+from . import LBT_TABLES_COMMIT, PACKAGE, TREE, environment, lbt
 
-LBT_REPO = "https://github.com/JETSCAPE/LBT-tables.git"
 #: sha256 of every LBT table file, written at build time from the tables built against
 LBT_SHA256 = PACKAGE / "lbt_tables.sha256"
 
@@ -61,39 +55,6 @@ def _check_lbt(tables: Path) -> list[str]:
     return bad
 
 
-def _download_lbt(target: Path) -> None:
-    """JETSCAPE/LBT-tables at the pinned commit, its split archive put back together into
-    ``target`` (what external_packages/get_lbtTab.sh does)."""
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=target.parent) as tmp:
-        repo = Path(tmp) / "repo"
-        print(f"xscape-fetch-data: {LBT_REPO} at {LBT_TABLES_COMMIT[:7]} ...", flush=True)
-        for cmd in (["git", "init", "-q", str(repo)],
-                    ["git", "-C", str(repo), "fetch", "-q", "--depth", "1", LBT_REPO,
-                     LBT_TABLES_COMMIT],
-                    ["git", "-C", str(repo), "checkout", "-q", "FETCH_HEAD"]):
-            subprocess.run(cmd, check=True)
-        parts = Path(tmp) / "parts"
-        parts.mkdir()
-        for archive in sorted((repo / "LBT-tables-split-archive").glob("*.tar.gz")):
-            with tarfile.open(archive) as tf:
-                tf.extractall(parts, filter="data")
-        out = Path(tmp) / "LBT-tables"
-        out.mkdir()
-        groups: dict[str, list[tuple[int, Path]]] = {}
-        for f in parts.iterdir():
-            m = re.match(r"(.+)\.part(\d+)$", f.name)
-            if not m:
-                raise RuntimeError(f"unexpected file in the LBT archive: {f.name}")
-            groups.setdefault(m.group(1), []).append((int(m.group(2)), f))
-        for name, pieces in groups.items():
-            with open(out / name, "wb") as dst:
-                for _, piece in sorted(pieces):
-                    with open(piece, "rb") as src:
-                        shutil.copyfileobj(src, dst)
-        out.rename(target)
-
-
 def fetch_data(argv=None) -> int:
     p = argparse.ArgumentParser(prog="xscape-fetch-data",
                                 description="Fetch the data that is not in the wheel.")
@@ -107,7 +68,7 @@ def fetch_data(argv=None) -> int:
     else:
         target = _cache() / f"LBT-tables-{LBT_TABLES_COMMIT[:7]}"
         if not target.is_dir():
-            _download_lbt(target)
+            lbt.download(target, LBT_TABLES_COMMIT)
     bad = _check_lbt(target)
     if bad:
         print(f"xscape-fetch-data: {target}: {len(bad)} file(s) missing or different from the "
