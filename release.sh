@@ -54,9 +54,9 @@ else
     bash get_music4gpu.sh > "$SRC/get_music4gpu.log" 2>&1
     bash get_js_contrib.sh > "$SRC/get_js_contrib.log" 2>&1
   )
-  move_to "$EP/js-contrib" "$JS_CONTRIB_REF"
-  move_to "$EP/music4gpu" "$MUSIC4GPU_REF"
 fi
+move_to "$EP/js-contrib" "$JS_CONTRIB_REF"
+move_to "$EP/music4gpu" "$MUSIC4GPU_REF"
 for pair in ". $XSCAPE_REF" "external_packages/js-contrib $JS_CONTRIB_REF" \
             "external_packages/music4gpu $MUSIC4GPU_REF" "external_packages/iSS $ISS_REF" \
             "external_packages/3dMCGlauber $GLAUBER_REF"; do

@@ -1,7 +1,8 @@
 """
-The LBT tables (JETSCAPE/LBT-tables): fetched at one commit and their split archive put back
-together, as external_packages/get_lbtTab.sh does (which needs bash 4).  Standard library
-only, so release.sh runs it as a script too:
+The LBT tables (JETSCAPE/LBT-tables): GitHub's archive of one commit (no git needed: a Mac
+without the Command Line Tools has none), its split archive put back together, as
+external_packages/get_lbtTab.sh does (which needs bash 4).  Standard library only, so
+release.sh runs it as a script too:
 
     python lbt.py TARGET_DIR COMMIT
 """
@@ -14,9 +15,11 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.error
+import urllib.request
 from pathlib import Path
 
-LBT_REPO = "https://github.com/JETSCAPE/LBT-tables.git"
+LBT_ARCHIVE = "https://github.com/JETSCAPE/LBT-tables/archive/{commit}.tar.gz"
 
 
 def download(target: Path, commit: str) -> None:
@@ -24,12 +27,20 @@ def download(target: Path, commit: str) -> None:
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=target.parent) as tmp:
-        repo = Path(tmp) / "repo"
-        print(f"LBT tables: {LBT_REPO} at {commit[:7]} ...", flush=True)
-        for cmd in (["git", "init", "-q", str(repo)],
-                    ["git", "-C", str(repo), "fetch", "-q", "--depth", "1", LBT_REPO, commit],
-                    ["git", "-C", str(repo), "checkout", "-q", "FETCH_HEAD"]):
-            subprocess.run(cmd, check=True)
+        url = LBT_ARCHIVE.format(commit=commit)
+        print(f"LBT tables: {url} (about 240 MB) ...", flush=True)
+        download = Path(tmp) / "lbt.tar.gz"
+        try:
+            with urllib.request.urlopen(url) as r, open(download, "wb") as f:
+                shutil.copyfileobj(r, f, 1 << 22)
+        except urllib.error.URLError:
+            # a Python without CA certificates (python.org's before "Install Certificates"):
+            # macOS's curl, with the system's trust store
+            subprocess.run(["/usr/bin/curl", "-fsSL", "-o", str(download), url], check=True)
+        with tarfile.open(download) as tf:
+            tf.extractall(Path(tmp) / "repo", filter="data")
+        download.unlink()
+        repo = next((Path(tmp) / "repo").iterdir())          # LBT-tables-<commit>/
         parts = Path(tmp) / "parts"
         parts.mkdir()
         for archive in sorted((repo / "LBT-tables-split-archive").glob("*.tar.gz")):

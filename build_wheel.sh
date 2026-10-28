@@ -105,7 +105,7 @@ Version: $XSCAPE_VERSION
 Summary: X-SCAPE with MUSIC on the Metal GPU, for Apple Silicon Macs
 License: GPL-3.0-or-later
 Requires-Python: ==$PYTHON_VERSION.*
-Requires-Dist: pyjetscape==$PYJETSCAPE_VERSION
+Requires-Dist: pyjetscape[analysis]==$PYJETSCAPE_VERSION
 EOF
 cat > "$DI/WHEEL" <<EOF
 Wheel-Version: 1.0
