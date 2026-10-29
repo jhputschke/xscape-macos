@@ -9,7 +9,8 @@
 #    music4gpu moved to JS_CONTRIB_REF / MUSIC4GPU_REF; iSS and 3dMCGlauber checked against
 #    ISS_REF / GLAUBER_REF; the LBT tables at LBT_TABLES_COMMIT (for their checksums)
 # 3. build_wheel.sh on that tree -> dist/
-# 4. --upload: GitHub pre-release v$XSCAPE_VERSION of this repository with the two wheels,
+# 4. --upload: GitHub release v$XSCAPE_VERSION of this repository (a pre-release for dev/rc
+#    versions) with the two wheels,
 #    then a lock that names them by their release URLs (hash-checked), uploaded too
 set -euo pipefail
 
@@ -79,10 +80,23 @@ XSCAPE_SRC=$X LBT_TABLES_DIR=$LBT "$HERE/build_wheel.sh"
 
 [ "$UPLOAD" = 1 ] || exit 0
 
-say "GitHub pre-release $REPO $TAG"
+say "GitHub release $REPO $TAG"
 XWHL=$(cd "$HERE/dist" && ls xscape-*.whl); PWHL=$(cd "$HERE/dist" && ls pyjetscape-*.whl)
+# a pre-release only for dev/rc/alpha/beta versions (PEP 440), else the latest release
+case "$XSCAPE_VERSION" in
+  *dev*|*rc*|*a[0-9]*|*b[0-9]*) PRE=--prerelease; TITLE="xscape $XSCAPE_VERSION (test)";
+    FIRST="Test build for Apple Silicon Macs, macOS 26 or later, Python $PYTHON_VERSION; not for production yet." ;;
+  *) PRE=--latest; TITLE="xscape $XSCAPE_VERSION";
+    FIRST="X-SCAPE with MUSIC on the Metal GPU for Apple Silicon Macs: macOS 26 or later, Python $PYTHON_VERSION, installed with uv." ;;
+esac
+XV=$(sed -n 's/.*XscapeVersion = "\([^"]*\)".*/\1/p' "$X/src/framework/Version.h")
+JV=$(sed -n 's/.*JetScapeVersion = "\([^"]*\)".*/\1/p' "$X/src/framework/Version.h")
 {
-  echo "Test build for Apple Silicon Macs, macOS 26 or later, Python $PYTHON_VERSION; not for production yet."
+  echo "$FIRST"
+  echo
+  echo "Step-by-step guide: https://github.com/jhputschke/xscape-macos#readme"
+  echo
+  echo "Components: X-SCAPE $XV (JETSCAPE $JV), branch contrib at ${XSCAPE_REF:0:8}; pyjetscape $PYJETSCAPE_VERSION (js-contrib ${JS_CONTRIB_REF:0:7}); MUSIC4GPU ${MUSIC4GPU_REF:0:7}; iSS ${ISS_REF:0:7}; 3dMCGlauber ${GLAUBER_REF:0:7}; LBT tables ${LBT_TABLES_COMMIT:0:7}."
   echo
   echo '```bash'
   echo "curl -LO https://github.com/$REPO/releases/download/$TAG/xscape-$XSCAPE_VERSION-$PYTAG.lock.txt"
@@ -96,7 +110,7 @@ XWHL=$(cd "$HERE/dist" && ls xscape-*.whl); PWHL=$(cd "$HERE/dist" && ls pyjetsc
   sed -n '2,$p' "$HERE/build/stage/xscape/share/xscape/BUILD_INFO.txt"
   echo '```'
 } > "$HERE/build/release_notes.md"
-gh release create "$TAG" --repo "$REPO" --prerelease --title "xscape $XSCAPE_VERSION (test)" \
+gh release create "$TAG" --repo "$REPO" $PRE --title "$TITLE" \
   --notes-file "$HERE/build/release_notes.md" "$HERE/dist/$XWHL" "$HERE/dist/$PWHL"
 BASE=https://github.com/$REPO/releases/download/$TAG
 LOCK=$HERE/dist/release/xscape-$XSCAPE_VERSION-$PYTAG.lock.txt
