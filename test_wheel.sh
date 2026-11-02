@@ -3,7 +3,9 @@
 # environment (uv's own Python, no conda, no X-SCAPE variables) and run from an empty
 # directory: no Homebrew library may load, the Au+Au jet production (2 events, seed 1) and
 # hadronize.py with a fixed seed UUID; with REF_DIR (the same run from a checkout:
-# REF_DIR/out, REF_DIR/had), compare every dataset bit for bit.
+# REF_DIR/out, REF_DIR/had), compare every dataset bit for bit. Then smoke_wheel.sh in the
+# same environment (OUT_DIR/smoke; SMOKE=0 skips it, SMOKE_NET=0 its OSDF notebook): every
+# command, the copies, the checks, one event of every test XML and example, the notebooks.
 #
 #   TOOLS_BIN=<venv>/bin LBT_FROM=<checkout>/external_packages/LBT-tables ./test_wheel.sh /tmp/t ref
 #   TOOLS_BIN=<venv>/bin LOCK_URL=https://github.com/<repo>/releases/download/<tag>/<lock> ./test_wheel.sh /tmp/t ref
@@ -25,7 +27,7 @@ U=11111111-2222-3333-4444-555555555555
 unset XSCAPE JETSCAPE_BUILD XSCAPE_DATA_DIR HYDROPROGRAMPATH LBT_TABLES_PATH MUSIC_METALLIB \
       MUSIC_EOS_TABLE PYTHIA8DATA DYLD_LIBRARY_PATH PYTHONPATH CONDA_PREFIX CONDA_DEFAULT_ENV
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
-export UV_PYTHON_PREFERENCE=only-managed
+# (uv venv --managed-python: uv's own Python; UV_PYTHON_PREFERENCE would conflict with it)
 
 rm -rf "$OUT"; mkdir -p "$OUT"
 "$UV" venv -q --managed-python "$OUT/venv" --python "$PYTHON_VERSION"
@@ -59,4 +61,9 @@ if [ -n "$REF" ]; then
   echo "== compare with $REF"
   for f in $(ls "$REF/out" | grep '\.h5$'); do python "$HERE/cmp_h5.py" "$REF/out/$f" "$OUT/out/$f" | tail -3 || true; done
   for f in $(ls "$REF/had" | grep '\.h5$'); do python "$HERE/cmp_h5.py" "$REF/had/$f" "$OUT/had/$f" | tail -1 || true; done
+fi
+
+if [ "${SMOKE:-1}" = 1 ]; then
+  echo "== smoke suite"
+  "$HERE/smoke_wheel.sh" "$OUT/venv" "$OUT/smoke"
 fi

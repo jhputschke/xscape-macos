@@ -8,9 +8,12 @@
 #    get_*.sh (which also download the EOS, iSS and LHAPDF data), then js-contrib and
 #    music4gpu moved to JS_CONTRIB_REF / MUSIC4GPU_REF; iSS and 3dMCGlauber checked against
 #    ISS_REF / GLAUBER_REF; the LBT tables at LBT_TABLES_COMMIT (for their checksums)
+#    and refuses js-contrib example XMLs with tags X-SCAPE's main XML lacks (runJetscape would
+#    stop on them: the two pins must move together, e.g. multi_hard's <extraHard>)
 # 3. build_wheel.sh on that tree -> dist/
 # 4. --upload: GitHub release v$XSCAPE_VERSION of this repository (a pre-release for dev/rc
-#    versions) with the two wheels,
+#    versions) with the two wheels, its notes from release_notes/$XSCAPE_VERSION.md when that
+#    exists (what's new), then the install commands, the components and BUILD_INFO.txt,
 #    then a lock that names them by their release URLs (hash-checked), uploaded too
 set -euo pipefail
 
@@ -67,6 +70,27 @@ for pair in ". $XSCAPE_REF" "external_packages/js-contrib $JS_CONTRIB_REF" \
   [ -z "$(git -C "$X/$1" status --porcelain --untracked-files=no)" ] \
     || { echo "$1 has local changes" >&2; exit 1; }
 done
+say "js-contrib's example XMLs against X-SCAPE's main XML"
+(cd "$EP/js-contrib" && git ls-files -z 'contribs/PyJetscape/example/*.xml') \
+  | "$PYTHON_BIN" -c '
+import sys, xml.etree.ElementTree as ET
+main, root = sys.argv[1], sys.argv[2]
+known = {el.tag for el in ET.parse(main).getroot().iter()}
+bad = []
+for rel in sys.stdin.read().split("\0"):
+    if not rel:
+        continue
+    stack = [(el, False) for el in ET.parse(f"{root}/{rel}").getroot()]
+    while stack:
+        el, custom = stack.pop()
+        custom = custom or "CustomModule" in el.tag     # registered by Python modules
+        if not custom and el.tag not in known:
+            bad.append(f"{rel}: <{el.tag}>")
+        stack += [(c, custom) for c in el]
+if bad:
+    sys.exit("tags the main XML lacks (X-SCAPE older than js-contrib?):\n  " + "\n  ".join(sorted(set(bad))))
+print("all tags known")
+' "$X/config/jetscape_main.xml" "$EP/js-contrib"
 LBT=$SRC/LBT-tables
 [ -d "$LBT" ] || "$PYTHON_BIN" "$HERE/src/xscape/lbt.py" "$LBT" "$LBT_TABLES_COMMIT"
 for d in . external_packages/js-contrib external_packages/music4gpu external_packages/iSS \
@@ -94,15 +118,21 @@ JV=$(sed -n 's/.*JetScapeVersion = "\([^"]*\)".*/\1/p' "$X/src/framework/Version
 {
   echo "$FIRST"
   echo
+  if [ -f "$HERE/release_notes/$XSCAPE_VERSION.md" ]; then
+    cat "$HERE/release_notes/$XSCAPE_VERSION.md"
+    echo
+  fi
   echo "Step-by-step guide: https://github.com/jhputschke/xscape-macos#readme"
   echo
   echo "Components: X-SCAPE $XV (JETSCAPE $JV), branch contrib at ${XSCAPE_REF:0:8}; pyjetscape $PYJETSCAPE_VERSION (js-contrib ${JS_CONTRIB_REF:0:7}); MUSIC4GPU ${MUSIC4GPU_REF:0:7}; iSS ${ISS_REF:0:7}; 3dMCGlauber ${GLAUBER_REF:0:7}; LBT tables ${LBT_TABLES_COMMIT:0:7}."
   echo
   echo '```bash'
   echo "curl -LO https://github.com/$REPO/releases/download/$TAG/xscape-$XSCAPE_VERSION-$PYTAG.lock.txt"
-  echo "uv venv ~/.venvs/xscape --python $PYTHON_VERSION && source ~/.venvs/xscape/bin/activate"
+  echo "uv venv --managed-python ~/.venvs/xscape-$XSCAPE_VERSION --python $PYTHON_VERSION"
+  echo "source ~/.venvs/xscape-$XSCAPE_VERSION/bin/activate"
   echo "uv pip sync xscape-$XSCAPE_VERSION-$PYTAG.lock.txt"
-  echo "xscape-fetch-data lbt && xscape-examples ~/xscape/examples"
+  echo "xscape-fetch-data lbt && xscape-selftest"
+  echo "xscape-examples ~/xscape/examples && xscape-utils ~/xscape/utils"
   echo '```'
   echo
   echo "Built from:"
