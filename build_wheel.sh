@@ -68,6 +68,12 @@ PKG=$STAGE/xscape
 TREE=$PKG/share/xscape
 # 3dMCGlauber reads LHAPDF's data (share/); its library, headers and tools are not needed
 rm -rf "$TREE/LHAPDF_Lib/bin" "$TREE/LHAPDF_Lib/include" "$TREE/LHAPDF_Lib/lib"
+# data the external packages download (a failed download leaves it out quietly)
+for f in iSS_tables/deltaf_tables/urqmd/NEoS4D_22mom_deltafCoeff.bin \
+         iSS_tables/deltaf_tables/urqmd/NEoS4D_CE_deltafCoeff.bin \
+         EOS/hotQCD/hrg_hotqcd_eos_binary.dat; do
+  [ -s "$TREE/$f" ] || { echo "$TREE/$f is missing: a download of get_*.sh failed" >&2; exit 1; }
+done
 
 say "3. package, Pythia data, examples, utils, BUILD_INFO.txt"
 cp "$HERE"/src/xscape/*.py "$PKG/"
