@@ -69,7 +69,7 @@ TREE=$PKG/share/xscape
 # 3dMCGlauber reads LHAPDF's data (share/); its library, headers and tools are not needed
 rm -rf "$TREE/LHAPDF_Lib/bin" "$TREE/LHAPDF_Lib/include" "$TREE/LHAPDF_Lib/lib"
 
-say "3. package, Pythia data, examples, BUILD_INFO.txt"
+say "3. package, Pythia data, examples, utils, BUILD_INFO.txt"
 cp "$HERE"/src/xscape/*.py "$PKG/"
 printf 'VERSION = "%s"\nLBT_TABLES_COMMIT = "%s"\n' "$XSCAPE_VERSION" "$LBT_TABLES_COMMIT" > "$PKG/_build.py"
 PYTHIA=$(brew --prefix pythia)
@@ -79,8 +79,14 @@ case "$pythia_brew" in "$pythia_lib"*) ;; *)
   echo "Pythia xmldoc $pythia_lib does not match Homebrew pythia $pythia_brew" >&2; exit 1 ;; esac
 mkdir -p "$TREE/Pythia8"
 cp -R "$PYTHIA/share/Pythia8/xmldoc" "$PYTHIA/share/Pythia8/pdfdata" "$TREE/Pythia8/"
-mkdir -p "$TREE/examples"
+mkdir -p "$TREE/examples" "$TREE/utils"
 (cd "$PYJS/example" && git ls-files -z . | tar --null -T - -cf -) | tar -C "$TREE/examples" -xf -
+# js-contrib's utils/ (the xscape-* tool commands run these; xscape-utils copies them): the
+# tracked files only, so nothing local (a credentials file in remote_transfer/) comes along
+(cd "$JS/utils" && git ls-files -z . | tar --null -T - -cf -) | tar -C "$TREE/utils" -xf -
+if grep -rlE '"private_key"|BEGIN [A-Z ]*PRIVATE KEY' "$TREE/examples" "$TREE/utils"; then
+  echo "a file above holds a private key: not shipped" >&2; exit 1
+fi
 {
   echo "# xscape $XSCAPE_VERSION, built $(date -u +%Y-%m-%dT%H:%M:%SZ) on $(hostname -s)"
   for d in . external_packages/music4gpu external_packages/iSS external_packages/3dMCGlauber \
@@ -109,7 +115,11 @@ Summary: X-SCAPE with MUSIC on the Metal GPU, for Apple Silicon Macs
 License: GPL-3.0-or-later
 Requires-Python: ==$PYTHON_VERSION.*
 Requires-Dist: pyjetscape[analysis]==$PYJETSCAPE_VERSION
+Requires-Dist: pelicanfs>=1.4
+Requires-Dist: google-crc32c>=1.5
 EOF
+# (pelicanfs: fsspec's osdf:// and pelican:// for the notebooks and xscape-osdf, as in the
+#  production image; google-crc32c: xscape-osdf's checksums)
 cat > "$DI/WHEEL" <<EOF
 Wheel-Version: 1.0
 Generator: xscape-macos build_wheel.sh
@@ -121,6 +131,14 @@ cat > "$DI/entry_points.txt" <<EOF
 runJetscape = xscape.cli:run_jetscape
 xscape-run = xscape.cli:run_in_workdir
 xscape-fetch-data = xscape.cli:fetch_data
+xscape-selftest = xscape.cli:selftest
+xscape-osdf = xscape.cli:osdf
+xscape-upload-follow = xscape.cli:upload_follow
+xscape-jobmon = xscape.cli:jobmon
+xscape-prodwizard = xscape.cli:prodwizard
+xscape-h5-inspect = xscape.cli:h5_inspect
+xscape-check-deposition = xscape.cli:check_deposition
+xscape-gcs = xscape.cli:gcs
 EOF
 echo xscape > "$DI/top_level.txt"
 rm -rf "$DIST"; mkdir -p "$DIST/raw"
