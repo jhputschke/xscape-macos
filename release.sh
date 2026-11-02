@@ -5,7 +5,9 @@
 #
 # 1. refuses a modified packaging repository (this one)
 # 2. X-SCAPE at XSCAPE_REF into build/src/X-SCAPE, its external packages with their own
-#    get_*.sh (which also download the EOS, iSS and LHAPDF data), then js-contrib and
+#    get_*.sh (which also download the EOS, iSS and LHAPDF data; a download whose archive is
+#    an error page stops it; iSS's NEoS4D delta-f tables are fetched here, checked against
+#    their checksums, as iSS's own script no longer gets them), then js-contrib and
 #    music4gpu moved to JS_CONTRIB_REF / MUSIC4GPU_REF; iSS and 3dMCGlauber checked against
 #    ISS_REF / GLAUBER_REF; the LBT tables at LBT_TABLES_COMMIT (for their checksums)
 #    and refuses js-contrib example XMLs with tags X-SCAPE's main XML lacks (runJetscape would
@@ -58,6 +60,26 @@ else
     bash get_music4gpu.sh > "$SRC/get_music4gpu.log" 2>&1
     bash get_js_contrib.sh > "$SRC/get_js_contrib.log" 2>&1
   )
+  # a download that got an error page instead of its archive leaves its data out quietly:
+  # stop (get_iSS.log's only archive is the NEoS4D one, fetched again below)
+  TARFAIL='tar: Error|Unrecognized archive format|not in gzip format'
+  bad=$(cd "$SRC" && grep -lE "$TARFAIL" get_*.log | grep -vx get_iSS.log || true)
+  if [ -n "$bad" ]; then
+    echo "a download failed (its archive is not one): $bad" >&2; grep -hE "$TARFAIL" $bad >&2; exit 1
+  fi
+fi
+# iSS's iSS_tables/deltaf_tables/urqmd/download_NEoS4D_deltafCoeffs.sh asks Dropbox with dl=0,
+# which now returns Dropbox's preview page (HTML), not the archive, and its two tables go
+# missing (2026-11-02). Fetched here with dl=1 instead, checked against the tables of 0.1.0.
+DELTAF=$EP/iSS/iSS_tables/deltaf_tables/urqmd
+DELTAF_URL='https://www.dropbox.com/scl/fi/3n8v1sgwuin72oh61uruz/NEoS4D_deltafCoeffs.tar.gz?rlkey=gvh94axcrszee2hb42woru82t&dl=1'
+DELTAF_SHA="cf08dc0da513762d0a74b150d60ff2d6bee720189f8bfe62af4b91252cb8294b  NEoS4D_22mom_deltafCoeff.bin
+33a562ac8f0cee2e027a37f2f0ca069499e870b2b6906e07e760644d2ebfd1e4  NEoS4D_CE_deltafCoeff.bin"
+if ! (cd "$DELTAF" && echo "$DELTAF_SHA" | shasum -a 256 -c --status 2>/dev/null); then
+  say "iSS's NEoS4D delta-f tables (Dropbox, dl=1)"
+  curl -fsSL "$DELTAF_URL" | tar -xzf - -C "$DELTAF"
+  (cd "$DELTAF" && echo "$DELTAF_SHA" | shasum -a 256 -c) \
+    || { echo "iSS's NEoS4D delta-f tables: checksums differ" >&2; exit 1; }
 fi
 move_to "$EP/js-contrib" "$JS_CONTRIB_REF"
 move_to "$EP/music4gpu" "$MUSIC4GPU_REF"
