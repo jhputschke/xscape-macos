@@ -13,6 +13,7 @@ Macs on macOS 26 or later, Python 3.13, installed with uv. Design and decisions:
 | `test_wheel.sh` | install from the lock into a fresh uv environment, check no Homebrew library loads, run the Au+Au jet production and `hadronize.py`, compare bit for bit with a checkout's run, then `smoke_wheel.sh` |
 | `smoke_wheel.sh` | the smoke suite of an installed environment (~15 min): every command, `xscape-examples` / `xscape-utils`, the checks, one event of every X-SCAPE test XML (run or a clear stop) and of every example script, the multi_hard examples through `run_jobs.sh` and `xscape-jobmon`, the two `pythonic` notebooks |
 | `release_notes/<version>.md` | what's new, put at the top of the GitHub release's notes by `release.sh` |
+| `install.sh` | the one-command install for users, served from `main` (raw.githubusercontent.com): checks the Mac, uv, the environment from a release's lock, the LBT tables, `xscape-selftest`. It takes the latest regular release from GitHub's `releases/latest` redirect, so it needs no change for a release; a pre-release is installed with `--version` |
 | `sync_guide.py` | writes js-contrib's `utils/README_Mac_Usage.md` from `README.md` (the same guide, links rewritten) |
 | `cmp_h5.py` | every HDF5 dataset bit for bit |
 
