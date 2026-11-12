@@ -40,8 +40,22 @@ say() { printf '\n== %s\n' "$*"; }
 
 pyver=$("$PYTHON_BIN" -c 'import sys; print("%d.%d" % sys.version_info[:2])')
 [ "$pyver" = "$PYTHON_VERSION" ] || { echo "PYTHON_BIN is Python $pyver, need $PYTHON_VERSION" >&2; exit 1; }
-grep -q "^version = \"$PYJETSCAPE_VERSION\"" "$PYJS/pyproject.toml" \
-  || { echo "js-contrib's pyjetscape is not version $PYJETSCAPE_VERSION" >&2; exit 1; }
+# pyjetscape's version.  js-contrib from 905aae0 on takes it from its release tag vX.Y
+# (setuptools-scm, dynamic = ["version"]): js-contrib must be at the commit of tag
+# v$PYJETSCAPE_VERSION (PYJETSCAPE_UNTAGGED=1: build it under that version anyway, for a test).
+# Older js-contrib has a fixed version in pyproject.toml, which must be PYJETSCAPE_VERSION.
+if grep -q '^dynamic = \[.*"version"' "$PYJS/pyproject.toml"; then
+  git -C "$JS" fetch -q origin "refs/tags/v$PYJETSCAPE_VERSION:refs/tags/v$PYJETSCAPE_VERSION" 2>/dev/null || true
+  tagc=$(git -C "$JS" rev-parse -q --verify "refs/tags/v$PYJETSCAPE_VERSION^{commit}" || true)
+  if [ "$tagc" != "$(git -C "$JS" rev-parse HEAD)" ] && [ "${PYJETSCAPE_UNTAGGED:-0}" != 1 ]; then
+    echo "js-contrib $(git -C "$JS" rev-parse --short HEAD) is not tag v$PYJETSCAPE_VERSION${tagc:+ (${tagc:0:7})}:" \
+         "tag the release first and pin JS_CONTRIB_REF to it (PYJETSCAPE_UNTAGGED=1 to test)" >&2
+    exit 1
+  fi
+else
+  grep -q "^version = \"$PYJETSCAPE_VERSION\"" "$PYJS/pyproject.toml" \
+    || { echo "js-contrib's pyjetscape is not version $PYJETSCAPE_VERSION" >&2; exit 1; }
+fi
 
 say "1. configure and build ($BUILD)"
 mkdir -p "$HERE/build"
@@ -158,7 +172,12 @@ say "5. pyjetscape wheel"
 # of the checkout
 rm -rf "$HERE/build/pyjetscape_src"; mkdir -p "$HERE/build/pyjetscape_src"
 (cd "$PYJS" && git ls-files -z . | tar --null -T - -cf -) | tar -C "$HERE/build/pyjetscape_src" -xf -
-"$UV" build --wheel --out-dir "$DIST" "$HERE/build/pyjetscape_src" > "$HERE/build/pyjetscape_build.log" 2>&1
+# the copy has no .git (and sits inside this repository, whose tags setuptools-scm would
+# take): fix the version (ignored by an older js-contrib with a fixed version)
+SETUPTOOLS_SCM_PRETEND_VERSION_FOR_PYJETSCAPE=$PYJETSCAPE_VERSION \
+  "$UV" build --wheel --out-dir "$DIST" "$HERE/build/pyjetscape_src" > "$HERE/build/pyjetscape_build.log" 2>&1
+unzip -Z1 "$DIST"/pyjetscape-*.whl | grep -q "^pyjetscape-$PYJETSCAPE_VERSION.dist-info/" \
+  || { echo "the pyjetscape wheel is not version $PYJETSCAPE_VERSION: $(ls "$DIST"/pyjetscape-*.whl)" >&2; exit 1; }
 # (the type stub pyjetscape_core.pyi belongs in it; a compiled module must not)
 if unzip -Z1 "$DIST"/pyjetscape-*.whl | grep -E '\.(so|dylib)$' > /dev/null; then
   echo "the pyjetscape wheel contains a compiled core" >&2; exit 1
