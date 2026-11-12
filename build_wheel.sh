@@ -57,6 +57,12 @@ else
     || { echo "js-contrib's pyjetscape is not version $PYJETSCAPE_VERSION" >&2; exit 1; }
 fi
 
+# one version for the stack (from 1.5 on): the xscape wheel's is js-contrib's release,
+# PYJETSCAPE_VERSION, + .postN for a packaging fix, .devN / rcN for a test build
+pv=${PYJETSCAPE_VERSION//./\\.}
+echo "$XSCAPE_VERSION" | grep -Eq "^${pv}(\.post[0-9]+|\.dev[0-9]+|rc[0-9]+)?$" \
+  || { echo "XSCAPE_VERSION $XSCAPE_VERSION is not js-contrib's release $PYJETSCAPE_VERSION (+ .postN/.devN/rcN)" >&2; exit 1; }
+
 say "1. configure and build ($BUILD)"
 mkdir -p "$HERE/build"
 # a build tree configured for another source tree can't be reused
